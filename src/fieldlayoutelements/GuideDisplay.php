@@ -42,7 +42,7 @@ class GuideDisplay extends BaseUiElement
     /**
      * @inheritdoc
      */
-    protected function selectorIcon()
+    protected function selectorIcon(): ?string
     {
         return Craft::getAlias('@wbrowar/guide/assetbundles/static/icon-mask.svg');
     }
@@ -58,7 +58,7 @@ class GuideDisplay extends BaseUiElement
     /**
      * @inheritdoc
      */
-    public function settingsHtml()
+    public function settingsHtml(): ?string
     {
         return Craft::$app->getView()->renderTemplate(
             'guide/fieldlayoutelements/guide_display_settings',
@@ -72,7 +72,7 @@ class GuideDisplay extends BaseUiElement
     /**
      * @inheritdoc
      */
-    public function formHtml(ElementInterface $element = null, bool $static = false)
+    public function formHtml(ElementInterface $element = null, bool $static = false): ?string
     {
         try {
             $placement = Guide::$plugin->placement->getPlacements(['group' => 'uiElement', 'groupId' => 'uiElement-' . $this->uiId], 'one');

@@ -10,6 +10,11 @@
 
 namespace wbrowar\guide;
 
+use craft\controllers\ElementsController;
+use craft\elements\Asset;
+use craft\elements\Category;
+use craft\elements\Entry;
+use craft\events\DefineElementEditorHtmlEvent;
 use craft\events\DefineFieldLayoutElementsEvent;
 use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUserPermissionsEvent;
@@ -106,7 +111,7 @@ class Guide extends Plugin
     /**
      * @var string
      */
-    public $schemaVersion = '3.0.0';
+    public string $schemaVersion = '3.0.0';
 
     // Public Methods
     // =========================================================================
@@ -261,52 +266,59 @@ class Guide extends Plugin
             }
 
             // Add Guides to CP Groups
-            Craft::$app->view->hook('cp.assets.edit.content', function(&$context) {
-                $queries = [[
-                    'group' => 'asset',
-                    'groupId' => null,
-                ]];
+            Event::on(
+                ElementsController::class,
+                ElementsController::EVENT_DEFINE_EDITOR_CONTENT,
+                function(DefineElementEditorHtmlEvent $event) {
+                    switch (get_class($event->element)) {
+                        case Asset::class:
+                            $queries = [[
+                                'group' => 'asset',
+                                'groupId' => null,
+                            ]];
 
-                if ($context['element']->volumeId ?? false) {
-                    $volume = Craft::$app->getVolumes()->getVolumeById($context['element']->volumeId);
-                    
-                    if ($volume) {
-                        $queries[] = [
-                            'group' => 'assetVolume',
-                            'groupId' => $volume->uid,
-                        ];
+                            if ($context['element']->volumeId ?? false) {
+                                $volume = Craft::$app->getVolumes()->getVolumeById($context['element']->volumeId);
+
+                                if ($volume) {
+                                    $queries[] = [
+                                        'group' => 'assetVolume',
+                                        'groupId' => $volume->uid,
+                                    ];
+                                }
+                            }
+                            $event->html .= $this->_renderGuidesForTemplateHook('guide/elements/edit-page.twig', $queries, $context['element'] ?? null);
+                            break;
+                        case Category::class:
+                            $queries = [[
+                                'group' => 'category',
+                                'groupId' => null,
+                            ]];
+
+                            if ($context['group']->id ?? false) {
+                                $queries[] = [
+                                    'group' => 'categoryGroup',
+                                    'groupId' => $context['group']->uid,
+                                ];
+                            }
+                            $event->html .= $this->_renderGuidesForTemplateHook('guide/elements/edit-page.twig', $queries, $context['element'] ?? null);
+                            break;
+                        case Entry::class:
+                            $queries = [[
+                                'group' => 'entry',
+                                'groupId' => null,
+                            ]];
+
+                            if ($context['entry']->section->id ?? false) {
+                                $queries[] = [
+                                    'group' => 'section',
+                                    'groupId' => $context['entry']->section->uid,
+                                ];
+                            }
+                            $event->html .= $this->_renderGuidesForTemplateHook('guide/elements/edit-page.twig', $queries, $context['element'] ?? null);
                     }
-                }
-                return $this->_renderGuidesForTemplateHook('guide/elements/edit-page.twig', $queries, $context['element'] ?? null);
             });
-            Craft::$app->view->hook('cp.categories.edit.content', function(&$context) {
-                $queries = [[
-                    'group' => 'category',
-                    'groupId' => null,
-                ]];
 
-                if ($context['group']->id ?? false) {
-                    $queries[] = [
-                        'group' => 'categoryGroup',
-                        'groupId' => $context['group']->uid,
-                    ];
-                }
-                return $this->_renderGuidesForTemplateHook('guide/elements/edit-page.twig', $queries, $context['element'] ?? null);
-            });
-            Craft::$app->view->hook('cp.entries.edit.content', function(&$context) {
-                $queries = [[
-                    'group' => 'entry',
-                    'groupId' => null,
-                ]];
-
-                if ($context['entry']->section->id ?? false) {
-                    $queries[] = [
-                        'group' => 'section',
-                        'groupId' => $context['entry']->section->uid,
-                    ];
-                }
-                return $this->_renderGuidesForTemplateHook('guide/elements/edit-page.twig', $queries, $context['element'] ?? null);
-            });
             Craft::$app->view->hook('cp.globals.edit.content', function(&$context) {
                 $queries = [[
                     'group' => 'global',
@@ -378,7 +390,7 @@ class Guide extends Plugin
     /**
      * @inheritdoc
      */
-    public function getCpNavItem()
+    public function getCpNavItem(): ?array
     {
         $navItem = parent::getCpNavItem();
         $user = Craft::$app->getUser()->getIdentity();
@@ -417,7 +429,7 @@ class Guide extends Plugin
     /**
      * @inheritdoc
      */
-    protected function createSettingsModel()
+    protected function createSettingsModel(): ?\craft\base\Model
     {
         return new Settings();
     }
@@ -425,10 +437,10 @@ class Guide extends Plugin
     /**
      * @inheritdoc
      */
-    public function getSettingsResponse()
+    public function getSettingsResponse(): mixed
     {
         // Just redirect to the plugin settings page
-        Craft::$app->getResponse()->redirect(UrlHelper::cpUrl('guide/settings/general'));
+        return Craft::$app->getResponse()->redirect(UrlHelper::cpUrl('guide/settings/general'));
     }
 
     // Private Methods
